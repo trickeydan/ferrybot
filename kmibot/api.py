@@ -163,7 +163,7 @@ class FerryAPI:
     async def get_leaderboard(
         self,
     ) -> list[PersonWithScoreSchema]:
-        data = await self._request("GET", "v2/people/?ordering=-current_score&limit=10")
+        data = await self._request("GET", "v2/people/?ordering=-current_score&limit=12")
         ta = TypeAdapter(list[PersonWithScoreSchema])
         return ta.validate_python(data["results"])
 
