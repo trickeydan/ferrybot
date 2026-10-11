@@ -19,18 +19,18 @@ FROM python:3.12-slim-bookworm as runtime
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-RUN addgroup --system kmibot \
-    && adduser --system --ingroup kmibot kmibot
+RUN addgroup --system ferrybot \
+    && adduser --system --ingroup ferrybot ferrybot
 
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
 
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
-RUN chown -R kmibot:kmibot /app
+RUN chown -R ferrybot:ferrybot /app
 
-USER kmibot
+USER ferrybot
 
-COPY kmibot ./kmibot
+COPY ferrybot ./ferrybot
 
-ENTRYPOINT ["python", "-m", "kmibot"]
+ENTRYPOINT ["python", "-m", "ferrybot"]

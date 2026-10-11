@@ -7,8 +7,8 @@ import discord
 from discord.app_commands import Group, command, describe
 import httpx
 
-from kmibot.config import BotConfig
-from kmibot.modules.ferry.views import RatifyAccusationView
+from ferrybot.config import BotConfig
+from ferrybot.modules.ferry.views import RatifyAccusationView
 
 from .modals import AccuseModal
 

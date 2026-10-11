@@ -8,10 +8,10 @@ from uuid import UUID
 import discord
 import httpx
 
-from kmibot.api import AccusationSchema
+from ferrybot.api import AccusationSchema
 
 if typing.TYPE_CHECKING:
-    from kmibot.modules.ferry import FerryModule
+    from ferrybot.modules.ferry import FerryModule
 
 LOGGER = getLogger(__name__)
 

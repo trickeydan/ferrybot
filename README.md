@@ -1,6 +1,6 @@
-# KMIBot
+# ferrybot
 
-A discord bot for G3KMI.
+A discord bot.
 
 ## Configuration
 

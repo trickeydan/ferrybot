@@ -4,11 +4,11 @@ from logging import getLogger
 import discord
 from discord.app_commands import Group, command, describe
 
-from kmibot.config import BotConfig
+from ferrybot.config import BotConfig
 
 from .utils import event_is_pub, get_formatted_pub_name, get_pub_buttons_view
 from .views import PubView
-from kmibot.api import (
+from ferrybot.api import (
     FerryAPI,
     PubBookingAlreadyExistsError,
     PubEventTombstoneAlreadyExistsError,

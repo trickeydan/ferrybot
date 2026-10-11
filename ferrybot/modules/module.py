@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 import discord
 
 if TYPE_CHECKING:
-    from kmibot.client import DiscordClient
-    from kmibot.api import FerryAPI
+    from ferrybot.client import DiscordClient
+    from ferrybot.api import FerryAPI
 
 
 class Module:

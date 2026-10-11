@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from kmibot.modules import Module
-from kmibot.api import FerryAPI
+from ferrybot.modules import Module
+from ferrybot.api import FerryAPI
 
 from .commands import FerryCommand
 from .modals import AccuseModal
 
 if TYPE_CHECKING:
-    from kmibot.client import DiscordClient
+    from ferrybot.client import DiscordClient
 
 LOGGER = getLogger(__name__)
 

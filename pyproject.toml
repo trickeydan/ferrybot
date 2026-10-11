@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "kmibot"
+name = "ferrybot"
 version = "0.1.0"
 description = ""
 authors = ["Dan Trickey <git@trickey.io>"]

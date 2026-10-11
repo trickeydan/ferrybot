@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING
 import discord
 from discord import EventStatus
 
-from kmibot.api import FerryAPI
+from ferrybot.api import FerryAPI
 
 from ..module import Module
 from .commands import PubCommand
 from .utils import event_is_pub, get_formatted_pub_name, get_pub_buttons_view
 
 if TYPE_CHECKING:
-    from kmibot.client import DiscordClient
+    from ferrybot.client import DiscordClient
 
 
 LOGGER = logging.getLogger(__name__)

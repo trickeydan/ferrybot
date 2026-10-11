@@ -1,7 +1,7 @@
 import discord
 
-from kmibot.api import PubSchema
-from kmibot.config import BotConfig
+from ferrybot.api import PubSchema
+from ferrybot.config import BotConfig
 
 
 def event_is_pub(event: discord.ScheduledEvent) -> bool:

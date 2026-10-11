@@ -1,4 +1,4 @@
-from kmibot.modules.module import Module
+from ferrybot.modules.module import Module
 
 from .ferry import FerryModule
 from .pub import PubModule

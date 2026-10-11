@@ -172,7 +172,7 @@ class FerryAPI:
         return PersonSchema.model_validate(data)
 
     async def get_person_for_discord_member(
-        self, member: discord.User | discord.Member
+        self, member: discord.User | discord.ClientUser | discord.Member
     ) -> PersonSchema:
         try:
             data = await self._request("GET", f"v2/people/?discord_id={member.id}")

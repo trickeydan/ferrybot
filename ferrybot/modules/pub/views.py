@@ -2,7 +2,7 @@ import asyncio
 
 import discord
 
-from kmibot.api import PubSchema
+from ferrybot.api import PubSchema
 
 
 class PubSelector(discord.ui.Select):
