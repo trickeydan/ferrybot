@@ -25,18 +25,22 @@ class PubModule(Module):
         self.api_client = api_client
         client.tree.add_command(PubCommand(client.config, api_client), guild=client.guild)
 
-    async def on_ready(self, client: "DiscordClient") -> None:
+    async def setup_hook(self, client: "DiscordClient") -> None:
         if self.table_booking_reminder.is_running():
             return
 
         config = client.config
-        reminder_hour = (config.pub.hour - 6) % 24
-        reminder_weekday = (config.pub.weekday - int(config.pub.hour < 6)) % 7
+        reminder_minutes = (
+            config.pub.hour * 60 + config.pub.minute - config.pub.booking_reminder_hours * 60
+        )
+        reminder_day_offset, reminder_minutes = divmod(reminder_minutes, 24 * 60)
+        reminder_hour, reminder_minute = divmod(reminder_minutes, 60)
+        reminder_weekday = (config.pub.weekday + reminder_day_offset) % 7
         self._reminder_weekday = reminder_weekday
         self.table_booking_reminder.change_interval(
             time=time(
                 hour=reminder_hour,
-                minute=config.pub.minute,
+                minute=reminder_minute,
                 tzinfo=config.timezone,
             )
         )
@@ -62,9 +66,9 @@ class PubModule(Module):
             if (
                 not event_is_pub(event)
                 or event.status is not EventStatus.scheduled
-                or not timedelta(hours=5, minutes=59)
-                <= event.start_time - now
-                <= timedelta(hours=6, minutes=1)
+                or not timedelta(0)
+                < event.start_time - now
+                <= timedelta(hours=config.pub.booking_reminder_hours, minutes=30)
             ):
                 continue
 
@@ -84,7 +88,8 @@ class PubModule(Module):
                 continue
 
             message = [
-                "**No table has been booked for the pub in 6 hours!**",
+                "**No table has been booked for the pub in "
+                f"about {config.pub.booking_reminder_hours} hours!**",
                 "Could someone book one using `/pub booked`?",
             ]
             if pub_event.pub.booking_url is not None:

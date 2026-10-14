@@ -2,7 +2,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import tomllib
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, Field, ValidationError, validator
 from pydantic_settings import BaseSettings
 
 
@@ -17,6 +17,7 @@ class DiscordConfig(BaseModel):
 
 class PubConfig(BaseModel):
     supplemental_emoji: str = "🍺"
+    booking_reminder_hours: int = Field(default=10, ge=1)
     channel_id: int
     description: str
     weekday: int
