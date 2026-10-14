@@ -245,7 +245,7 @@ class PubCommand(Group):
             f"Please choose the new pub for {local_pub_time}",
         )
 
-        if pub.id == original_pub_event.pub:
+        if pub.id == original_pub_event.pub.id:
             await interaction.followup.send(
                 f"The pub is already at {pub.name}.",
                 ephemeral=True,
@@ -327,15 +327,7 @@ class PubCommand(Group):
             )
             return
 
-        pub = await self.api_client.get_pub(pub_event.pub)
-        if pub is None:
-            # This shouldn't happen, unless there's a race condition.
-            await interaction.response.send_message(
-                "Something has gone wrong.",
-                ephemeral=True,
-            )
-            return
-
+        pub = pub_event.pub
         await self.api_client.update_table_for_pub_event(pub_event.id, table_number)
 
         await interaction.response.send_message(
@@ -390,15 +382,7 @@ class PubCommand(Group):
             )
             return
 
-        pub = await self.api_client.get_pub(pub_event.pub)
-        if pub is None:
-            # This shouldn't happen, unless there's a race condition.
-            await interaction.response.send_message(
-                "Something has gone wrong.",
-                ephemeral=True,
-            )
-            return
-
+        pub = pub_event.pub
         person = await self.api_client.get_person_for_discord_member(interaction.user)
 
         try:

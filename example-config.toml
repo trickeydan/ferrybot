@@ -13,6 +13,7 @@ emoji_reacts = "🚂😠🚇"
 [pub]
 weekday = 3  # Thursday
 hour = 20
+booking_reminder_hours = 10
 channel_id = 1234567890
 description = "Casual chat and food. All welcome."
 web_url = "https://example.com/"

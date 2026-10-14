@@ -11,6 +11,9 @@ class Module:
     def __init__(self, client: "DiscordClient", api_client: "FerryAPI") -> None:
         pass
 
+    async def setup_hook(self, client: "DiscordClient") -> None:
+        pass
+
     async def on_ready(self, client: "DiscordClient") -> None:
         pass
 

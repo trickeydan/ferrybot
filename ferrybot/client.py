@@ -39,6 +39,9 @@ class DiscordClient(discord.Client):
         for command in commands:
             LOGGER.info(f"Registered /{command.name}")
 
+        for module in self._modules:
+            await module.setup_hook(self)
+
     async def on_ready(self) -> None:
         LOGGER.info(f"Logged on as {self.user}!")
 

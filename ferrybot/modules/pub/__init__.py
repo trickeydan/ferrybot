@@ -1,8 +1,10 @@
 import logging
+from datetime import datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 import discord
 from discord import EventStatus
+from discord.ext import tasks
 
 from ferrybot.api import FerryAPI
 
@@ -22,6 +24,90 @@ class PubModule(Module):
         self.client = client
         self.api_client = api_client
         client.tree.add_command(PubCommand(client.config, api_client), guild=client.guild)
+
+    async def setup_hook(self, client: "DiscordClient") -> None:
+        if self.table_booking_reminder.is_running():
+            return
+
+        config = client.config
+        reminder_minutes = (
+            config.pub.hour * 60 + config.pub.minute - config.pub.booking_reminder_hours * 60
+        )
+        reminder_day_offset, reminder_minutes = divmod(reminder_minutes, 24 * 60)
+        reminder_hour, reminder_minute = divmod(reminder_minutes, 60)
+        reminder_weekday = (config.pub.weekday + reminder_day_offset) % 7
+        self._reminder_weekday = reminder_weekday
+        self.table_booking_reminder.change_interval(
+            time=time(
+                hour=reminder_hour,
+                minute=reminder_minute,
+                tzinfo=config.timezone,
+            )
+        )
+        self.table_booking_reminder.start()
+
+    @tasks.loop(time=time(hour=0))
+    async def table_booking_reminder(self) -> None:
+        config = self.client.config
+        now = datetime.now(tz=config.timezone)
+        if now.weekday() != self._reminder_weekday:
+            return
+
+        if not isinstance(self.client.guild, discord.Guild):
+            LOGGER.error("Cannot send pub booking reminder without a connected guild.")
+            return
+
+        pub_channel = self.client.get_channel(config.pub.channel_id)
+        if not isinstance(pub_channel, discord.TextChannel):
+            LOGGER.error("Cannot send pub booking reminder: pub channel was not found.")
+            return
+
+        for event in self.client.guild.scheduled_events:
+            if (
+                not event_is_pub(event)
+                or event.status is not EventStatus.scheduled
+                or not timedelta(0)
+                < event.start_time - now
+                <= timedelta(hours=config.pub.booking_reminder_hours, minutes=30)
+            ):
+                continue
+
+            pub_event = await self.api_client.get_pub_event_by_discord_id(event.id)
+            if pub_event is None:
+                LOGGER.error(
+                    "Cannot send pub booking reminder: pub event was not found in the API."
+                )
+                continue
+            if pub_event.booking is not None:
+                LOGGER.info("Skipping pub booking reminder; a table is already booked.")
+                continue
+
+            expected_booker = pub_event.expected_booker
+            if expected_booker is None or expected_booker.discord_id is None:
+                LOGGER.info("Skipping pub booking reminder; expected booker has no Discord ID.")
+                continue
+
+            message = [
+                "**No table has been booked for the pub in "
+                f"about {config.pub.booking_reminder_hours} hours!**",
+                "Could someone book one using `/pub booked`?",
+            ]
+            if pub_event.pub.booking_url is not None:
+                message.append(f"Booking link: {pub_event.pub.booking_url}")
+            message.append(f"<@{expected_booker.discord_id}>")
+
+            await pub_channel.send(
+                "\n".join(message),
+                allowed_mentions=discord.AllowedMentions(
+                    users=True,
+                    roles=False,
+                    everyone=False,
+                ),
+            )
+
+    @table_booking_reminder.before_loop
+    async def before_table_booking_reminder(self) -> None:
+        await self.client.wait_until_ready()
 
     async def on_scheduled_event_create(
         self,
@@ -104,11 +190,7 @@ class PubModule(Module):
             if not pub_event:
                 LOGGER.error("Pub Event does not exist.")
                 return
-            pub = await self.api_client.get_pub(pub_event.pub)
-            if not pub:
-                LOGGER.error("Pub does not exist.")
-                return
-
+            pub = pub_event.pub
             formatted_pub_name = get_formatted_pub_name(pub, self.client.config)
             await self.pub_channel.send(
                 "\n".join(

@@ -69,6 +69,7 @@ class PubSchema(BaseModel):
     emoji: str
     menu_url: HttpUrl | None = None
     map_url: HttpUrl
+    booking_url: HttpUrl | None = None
 
     @validator("menu_url", pre=True)
     def parse_menu_url(cls, val: str) -> str | None:
@@ -104,12 +105,13 @@ class PubBookingAlreadyExistsError(Exception):
 class PubEventSchema(BaseModel):
     id: UUID
     timestamp: datetime
-    pub: UUID
+    pub: PubSchema
     discord_id: int | None
     table: PubTableSchema | None
     booking: PubBookingSchema | None
     attendees: list[PersonLinkWithDiscordSchema]
     tombstoned_attendees: list[PersonLinkWithDiscordSchema]
+    expected_booker: PersonLinkWithDiscordSchema | None
     announcements: list[str]
 
 
