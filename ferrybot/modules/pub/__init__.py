@@ -44,6 +44,13 @@ class PubModule(Module):
                 tzinfo=config.timezone,
             )
         )
+        LOGGER.info(
+            "Starting pub booking reminder for weekday %s at %02d:%02d (%s)",
+            reminder_weekday,
+            reminder_hour,
+            reminder_minute,
+            config.timezone,
+        )
         self.table_booking_reminder.start()
 
     @tasks.loop(time=time(hour=0))
@@ -62,7 +69,9 @@ class PubModule(Module):
             LOGGER.error("Cannot send pub booking reminder: pub channel was not found.")
             return
 
-        for event in self.client.guild.scheduled_events:
+        events = await self.client.guild.fetch_scheduled_events()
+        LOGGER.info("Checking %d scheduled events for pub booking reminders.", len(events))
+        for event in events:
             if (
                 not event_is_pub(event)
                 or event.status is not EventStatus.scheduled
