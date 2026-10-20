@@ -75,6 +75,10 @@ class PubSchema(BaseModel):
     def parse_menu_url(cls, val: str) -> str | None:
         return val if val else None
 
+    @validator("booking_url", pre=True)
+    def parse_booking_url(cls, val: str) -> str | None:
+        return val if val else None
+
 
 class PubLinkSchema(BaseModel):
     id: UUID
