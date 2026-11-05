@@ -1,3 +1,4 @@
+import random
 from datetime import datetime, timedelta
 from logging import getLogger
 
@@ -99,7 +100,11 @@ class PubCommand(Group):
             entity_type=discord.EntityType.external,
             privacy_level=discord.PrivacyLevel.guild_only,
             location=pub.name,
-            description=self.config.pub.description,
+            description=(
+                random.choice(self.config.pub.descriptions)  # noqa: S311
+                if self.config.pub.descriptions
+                else self.config.pub.description
+            ),
             reason=reason or f"{user} used the /pub next command",
         )
         person = await self.api_client.get_person_for_discord_member(user)

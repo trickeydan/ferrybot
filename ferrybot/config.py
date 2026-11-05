@@ -25,6 +25,8 @@ class PubConfig(BaseModel):
     hour: int
     minute: int = 0
     web_url: str
+    descriptions: list[str] = Field(default_factory=list)
+    sign_offs: list[str] = Field(default_factory=list)
 
 
 class FerryConfig(BaseModel):

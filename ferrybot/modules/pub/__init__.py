@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import datetime, time, timedelta
 from typing import TYPE_CHECKING
 
@@ -279,6 +280,9 @@ class PubModule(Module):
         ):
             # The Pub has ended.
             LOGGER.info("A pub event has ended.")
+            sign_offs = client.config.pub.sign_offs
             await self.pub_channel.send(
-                "The pub is over. You are still not allowed to say that word.",
+                random.choice(sign_offs)  # noqa: S311
+                if sign_offs
+                else "The pub is over. You are still not allowed to say that word.",
             )
