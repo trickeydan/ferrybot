@@ -37,6 +37,11 @@ class PubCommand(Group):
         )
         pub = await view.wait_until_complete()
         LOGGER.info(f"{interaction.user} chose {pub.name}")
+        if not pub.is_default:
+            await interaction.followup.send(
+                f"Wow, {pub.name}. Somewhere else for once.",
+                ephemeral=True,
+            )
         return pub
 
     def get_next_pub_time(self) -> datetime:
