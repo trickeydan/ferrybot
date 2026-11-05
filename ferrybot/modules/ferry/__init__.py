@@ -18,6 +18,14 @@ if TYPE_CHECKING:
 
 LOGGER = getLogger(__name__)
 
+RUDE_PATTERN = re.compile(
+    r"\b(shut\s+(up|it|your|the\s+f\w+\s+up)|stfu|f+u+c+k+\s+(off|you|u)|f+o+\s+off|piss\s+off"
+    r"|bugger\s+off|sod\s+off|screw\s+you|get\s+lost|go\s+away|go\s+to\s+hell"
+    r"|(stupid|useless|dumb|crap|shit|trash|rubbish|annoying|worthless)\s+(bot|ferrybot)"
+    r"|(hate|despise)\s+(you|this\s+bot)|you\s+suck)\b",
+    flags=re.IGNORECASE,
+)
+
 
 class FerryModule(Module):
     def __init__(self, client: DiscordClient, api_client: FerryAPI) -> None:
@@ -58,6 +66,21 @@ class FerryModule(Module):
 
     async def on_message(self, message: discord.Message) -> None:
         assert self.client.user
+        if (
+            message.author != self.client.user
+            and self.client.user in message.mentions
+            and RUDE_PATTERN.search(message.content)
+        ):
+            LOGGER.info(f"{message.author.display_name} was rude to the bot in #{message.channel}")
+            for emoji in self.client.config.ferry.emoji_reacts:
+                asyncio.create_task(message.add_reaction(emoji))
+            await self.command_group.publish_accusation(
+                message.author,
+                self.client.user,
+                quote=self.client.config.ferry.banned_word,
+            )
+            return
+
         pattern = rf"\b{self.client.config.ferry.banned_word}\b"
         if message.author != self.client.user and re.match(
             pattern, message.content, flags=re.IGNORECASE
