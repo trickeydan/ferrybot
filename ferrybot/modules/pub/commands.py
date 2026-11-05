@@ -96,7 +96,7 @@ class PubCommand(Group):
         scheduled_event = await guild.create_scheduled_event(
             name=f"{pub.emoji} {title} {self.config.pub.supplemental_emoji}",
             start_time=start_time,
-            end_time=start_time + timedelta(hours=3),
+            end_time=start_time + timedelta(minutes=self.config.pub.duration_minutes),
             entity_type=discord.EntityType.external,
             privacy_level=discord.PrivacyLevel.guild_only,
             location=pub.name,

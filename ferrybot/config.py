@@ -24,6 +24,7 @@ class PubConfig(BaseModel):
     weekday: int
     hour: int
     minute: int = 0
+    duration_minutes: int = Field(default=180, ge=1)
     web_url: str
     descriptions: list[str] = Field(default_factory=list)
     sign_offs: list[str] = Field(default_factory=list)

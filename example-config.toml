@@ -13,6 +13,7 @@ emoji_reacts = "🚂😠🚇"
 [pub]
 weekday = 3  # Thursday
 hour = 20
+duration_minutes = 180
 booking_reminder_hours = 10
 auto_select_hours = 72
 channel_id = 1234567890
