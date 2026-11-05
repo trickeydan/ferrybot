@@ -39,7 +39,7 @@ class PubCommand(Group):
         LOGGER.info(f"{interaction.user} chose {pub.name}")
         return pub
 
-    def _get_next_pub_time(self) -> datetime:
+    def get_next_pub_time(self) -> datetime:
         now = datetime.now(tz=self.config.timezone)
 
         today = now.date()
@@ -63,10 +63,10 @@ class PubCommand(Group):
             tzinfo=self.config.timezone,
         )
 
-    def _get_next_pub_scheduled_event(
+    def get_next_pub_scheduled_event(
         self, guild: discord.Guild, *, ignore_time: bool = False
     ) -> discord.ScheduledEvent | None:
-        pub_time = self._get_next_pub_time()
+        pub_time = self.get_next_pub_time()
         for event in sorted(guild.scheduled_events, key=lambda se: se.start_time):
             if (
                 event_is_pub(event)
@@ -76,14 +76,15 @@ class PubCommand(Group):
                 return event
         return None
 
-    async def _create_pub_event(
+    async def create_pub_event(
         self,
         guild: discord.Guild,
         pub: PubSchema,
         start_time: datetime,
         *,
-        user: discord.User | discord.Member,
+        user: discord.User | discord.ClientUser | discord.Member,
         title: str = "Pub",
+        reason: str | None = None,
     ) -> discord.ScheduledEvent:
         LOGGER.info(f"Creating scheduled event at {start_time}")
         scheduled_event = await guild.create_scheduled_event(
@@ -94,7 +95,7 @@ class PubCommand(Group):
             privacy_level=discord.PrivacyLevel.guild_only,
             location=pub.name,
             description=self.config.pub.description,
-            reason=f"{user} used the /pub next command",
+            reason=reason or f"{user} used the /pub next command",
         )
         person = await self.api_client.get_person_for_discord_member(user)
         await self.api_client.create_pub_event(
@@ -105,43 +106,16 @@ class PubCommand(Group):
         )
         return scheduled_event
 
-    @command(description="Select the pub for next week.")  # type: ignore[arg-type]
-    async def next(self, interaction: discord.Interaction) -> None:  # noqa: A003
-        LOGGER.info(f"{interaction.user} used /pub next")
-        assert interaction.guild is not None
-
-        if self._get_next_pub_scheduled_event(interaction.guild):
-            LOGGER.info("A pub event already exists.")
-            await interaction.response.send_message(
-                "A pub event already exists.",
-                ephemeral=True,
-            )
-            return
-
-        pub_time = self._get_next_pub_time()
-
-        pub = await self._choose_pub(
-            interaction,
-            f"Please choose the pub for {pub_time}",
-        )
-
-        pub_channel = interaction.guild.get_channel(self.config.pub.channel_id)
-        assert isinstance(pub_channel, discord.TextChannel)
-
-        scheduled_event = await self._create_pub_event(
-            interaction.guild,
-            pub,
-            pub_time,
-            user=interaction.user,
-        )
-
+    async def announce_next_pub(
+        self,
+        guild: discord.Guild,
+        pub: PubSchema,
+        pub_time: datetime,
+        scheduled_event: discord.ScheduledEvent,
+    ) -> bool:
         pub_event = await self.api_client.get_pub_event_by_discord_id(scheduled_event.id)
-
         if not pub_event:
-            await interaction.followup.send(
-                "Something went wrong when creating the event", ephemeral=True
-            )
-            return
+            return False
 
         def _get_display(attendee) -> str:
             if attendee.discord_id:
@@ -152,7 +126,7 @@ class PubCommand(Group):
         attendee_mentions = " ,".join(_get_display(a) for a in pub_event.attendees)
         tombstone_mentions = " ,".join(_get_display(a) for a in pub_event.tombstoned_attendees)
 
-        pub_channel = interaction.guild.get_channel(self.config.pub.channel_id)
+        pub_channel = guild.get_channel(self.config.pub.channel_id)
         assert isinstance(pub_channel, discord.TextChannel)
 
         LOGGER.info(f"Posting pub info in {pub_channel}")
@@ -181,12 +155,45 @@ class PubCommand(Group):
             "\n".join(message),
             view=get_pub_buttons_view(pub),
         )
+        return True
+
+    @command(description="Select the pub for next week.")  # type: ignore[arg-type]
+    async def next(self, interaction: discord.Interaction) -> None:  # noqa: A003
+        LOGGER.info(f"{interaction.user} used /pub next")
+        assert interaction.guild is not None
+
+        if self.get_next_pub_scheduled_event(interaction.guild):
+            LOGGER.info("A pub event already exists.")
+            await interaction.response.send_message(
+                "A pub event already exists.",
+                ephemeral=True,
+            )
+            return
+
+        pub_time = self.get_next_pub_time()
+
+        pub = await self._choose_pub(
+            interaction,
+            f"Please choose the pub for {pub_time}",
+        )
+
+        scheduled_event = await self.create_pub_event(
+            interaction.guild,
+            pub,
+            pub_time,
+            user=interaction.user,
+        )
+
+        if not await self.announce_next_pub(interaction.guild, pub, pub_time, scheduled_event):
+            await interaction.followup.send(
+                "Something went wrong when creating the event", ephemeral=True
+            )
 
     @command(description="Get the people attending the next pub event")
     async def attendees(self, interaction: discord.Interaction) -> None:
         assert interaction.guild
 
-        event = self._get_next_pub_scheduled_event(interaction.guild, ignore_time=True)
+        event = self.get_next_pub_scheduled_event(interaction.guild, ignore_time=True)
         if event is None:
             LOGGER.info("No pub exists.")
             await interaction.response.send_message(
@@ -222,7 +229,7 @@ class PubCommand(Group):
         LOGGER.info(f"{interaction.user} used /pub change")
         assert interaction.guild is not None
 
-        scheduled_event = self._get_next_pub_scheduled_event(interaction.guild)
+        scheduled_event = self.get_next_pub_scheduled_event(interaction.guild)
         if not scheduled_event:
             LOGGER.info("No upcoming pub event.")
             await interaction.response.send_message(
@@ -310,7 +317,7 @@ class PubCommand(Group):
             )
             return
 
-        event = self._get_next_pub_scheduled_event(interaction.guild, ignore_time=True)
+        event = self.get_next_pub_scheduled_event(interaction.guild, ignore_time=True)
         if event is None:
             LOGGER.info("No pub exists.")
             await interaction.response.send_message(
@@ -365,7 +372,7 @@ class PubCommand(Group):
             )
             return
 
-        event = self._get_next_pub_scheduled_event(interaction.guild, ignore_time=True)
+        event = self.get_next_pub_scheduled_event(interaction.guild, ignore_time=True)
         if event is None:
             LOGGER.info("No pub exists.")
             await interaction.response.send_message(

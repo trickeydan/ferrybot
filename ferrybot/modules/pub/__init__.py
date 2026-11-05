@@ -23,35 +23,85 @@ class PubModule(Module):
     def __init__(self, client: "DiscordClient", api_client: FerryAPI) -> None:
         self.client = client
         self.api_client = api_client
-        client.tree.add_command(PubCommand(client.config, api_client), guild=client.guild)
+        self.pub_command = PubCommand(client.config, api_client)
+        client.tree.add_command(self.pub_command, guild=client.guild)
+
+    def _schedule_before_pub(self, hours: int) -> tuple[int, time]:
+        """Get the weekday and time of day that is `hours` before the pub starts."""
+        config = self.client.config
+        minutes = config.pub.hour * 60 + config.pub.minute - hours * 60
+        day_offset, minutes = divmod(minutes, 24 * 60)
+        hour, minute = divmod(minutes, 60)
+        weekday = (config.pub.weekday + day_offset) % 7
+        return weekday, time(hour=hour, minute=minute, tzinfo=config.timezone)
 
     async def setup_hook(self, client: "DiscordClient") -> None:
-        if self.table_booking_reminder.is_running():
+        config = client.config
+
+        if not self.auto_select_pub.is_running():
+            self._auto_select_weekday, auto_select_time = self._schedule_before_pub(
+                config.pub.auto_select_hours
+            )
+            self.auto_select_pub.change_interval(time=auto_select_time)
+            LOGGER.info(
+                "Starting pub auto-select for weekday %s at %s (%s)",
+                self._auto_select_weekday,
+                auto_select_time.strftime("%H:%M"),
+                config.timezone,
+            )
+            self.auto_select_pub.start()
+
+        if not self.table_booking_reminder.is_running():
+            self._reminder_weekday, reminder_time = self._schedule_before_pub(
+                config.pub.booking_reminder_hours
+            )
+            self.table_booking_reminder.change_interval(time=reminder_time)
+            LOGGER.info(
+                "Starting pub booking reminder for weekday %s at %s (%s)",
+                self._reminder_weekday,
+                reminder_time.strftime("%H:%M"),
+                config.timezone,
+            )
+            self.table_booking_reminder.start()
+
+    @tasks.loop(time=time(hour=0))
+    async def auto_select_pub(self) -> None:
+        config = self.client.config
+        now = datetime.now(tz=config.timezone)
+        if now.weekday() != self._auto_select_weekday:
             return
 
-        config = client.config
-        reminder_minutes = (
-            config.pub.hour * 60 + config.pub.minute - config.pub.booking_reminder_hours * 60
+        guild = self.client.guild
+        if not isinstance(guild, discord.Guild):
+            LOGGER.error("Cannot auto-select a pub without a connected guild.")
+            return
+
+        pub_time = self.pub_command.get_next_pub_time()
+        if self.pub_command.get_next_pub_scheduled_event(guild):
+            return
+
+        pubs = await self.api_client.get_pubs(is_default=True)
+        if not pubs:
+            LOGGER.error("Cannot auto-select a pub: no default pub is set.")
+            return
+        pub = pubs[0]
+        LOGGER.info("Auto-selected %s for the pub at %s", pub.name, pub_time)
+
+        bot_user = self.client.user
+        assert bot_user
+        scheduled_event = await self.pub_command.create_pub_event(
+            guild,
+            pub,
+            pub_time,
+            user=bot_user,
+            reason="Automatically selected the next pub",
         )
-        reminder_day_offset, reminder_minutes = divmod(reminder_minutes, 24 * 60)
-        reminder_hour, reminder_minute = divmod(reminder_minutes, 60)
-        reminder_weekday = (config.pub.weekday + reminder_day_offset) % 7
-        self._reminder_weekday = reminder_weekday
-        self.table_booking_reminder.change_interval(
-            time=time(
-                hour=reminder_hour,
-                minute=reminder_minute,
-                tzinfo=config.timezone,
-            )
-        )
-        LOGGER.info(
-            "Starting pub booking reminder for weekday %s at %02d:%02d (%s)",
-            reminder_weekday,
-            reminder_hour,
-            reminder_minute,
-            config.timezone,
-        )
-        self.table_booking_reminder.start()
+        if not await self.pub_command.announce_next_pub(guild, pub, pub_time, scheduled_event):
+            LOGGER.error("Auto-selected pub event was not found in the API.")
+
+    @auto_select_pub.before_loop
+    async def before_auto_select_pub(self) -> None:
+        await self.client.wait_until_ready()
 
     @tasks.loop(time=time(hour=0))
     async def table_booking_reminder(self) -> None:

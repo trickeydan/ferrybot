@@ -70,6 +70,7 @@ class PubSchema(BaseModel):
     menu_url: HttpUrl | None = None
     map_url: HttpUrl
     booking_url: HttpUrl | None = None
+    is_default: bool = False
 
     @validator("menu_url", pre=True)
     def parse_menu_url(cls, val: str) -> str | None:
@@ -224,8 +225,13 @@ class FerryAPI:
 
     async def get_pubs(
         self,
+        *,
+        is_default: bool | None = None,
     ) -> list[PubSchema]:
-        data = await self._request("GET", "v2/pub/pubs/")
+        path = "v2/pub/pubs/"
+        if is_default is not None:
+            path += f"?is_default={str(is_default).lower()}"
+        data = await self._request("GET", path)
         ta = TypeAdapter(list[PubSchema])
         return ta.validate_python(data["results"])
 

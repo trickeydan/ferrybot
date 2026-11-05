@@ -18,6 +18,7 @@ class DiscordConfig(BaseModel):
 class PubConfig(BaseModel):
     supplemental_emoji: str = "🍺"
     booking_reminder_hours: int = Field(default=10, ge=1)
+    auto_select_hours: int = Field(default=72, ge=1)
     channel_id: int
     description: str
     weekday: int
